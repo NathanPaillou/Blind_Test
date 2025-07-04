@@ -11,17 +11,33 @@ app = Flask(__name__)
 CORS(app)  # Allow requests from your Flutter app
 
 # --- Spotify credentials ---
-CLIENT_ID = "3b3d3f66084a4ed4abd1e1d07268b5c1"
-CLIENT_SECRET = "f36a074638ce4569a0801b693b506389"
-REDIRECT_URI = "http://127.0.0.1:8501/callback"
-SCOPE = "playlist-read-private playlist-read-collaborative playlist-modify-private"
 
-sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
-    client_id=CLIENT_ID,
-    client_secret=CLIENT_SECRET,
-    redirect_uri=REDIRECT_URI,
-    scope=SCOPE
-))
+import os
+
+CLIENT_ID = os.environ.get("SPOTIPY_CLIENT_ID")
+CLIENT_SECRET = os.environ.get("SPOTIPY_CLIENT_SECRET")
+REDIRECT_URI = os.environ.get("SPOTIPY_REDIRECT_URI")
+SCOPE = "playlist-read-private playlist-read-collaborative playlist-modify-private"
+REFRESH_TOKEN = os.environ.get("SPOTIPY_REFRESH_TOKEN")
+
+def get_spotify_client():
+    oauth = SpotifyOAuth(
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        redirect_uri=REDIRECT_URI,
+        scope=SCOPE,
+        cache_path=None,
+        open_browser=False
+    )
+    if REFRESH_TOKEN:
+        oauth.refresh_token = REFRESH_TOKEN
+        token_info = oauth.refresh_access_token(REFRESH_TOKEN)
+        return spotipy.Spotify(auth=token_info['access_token'])
+    else:
+        # fallback: try to get token interactively (local only)
+        return spotipy.Spotify(auth_manager=oauth)
+
+sp = get_spotify_client()
 
 SEUIL_ARTISTE = 0.8
 SEUIL_TITRE = 0.7
